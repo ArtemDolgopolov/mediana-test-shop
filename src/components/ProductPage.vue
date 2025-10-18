@@ -1,9 +1,10 @@
 <template>
  <div>
    <Header />
-   <main class="p-4">
-     <div v-if="loading" class="flex items-center justify-center h-64">
-       <div class="text-gray-500">Загрузка продукта...</div>
+   <main class="p-4 font-inconsolata">
+     <!-- Спиннер -->
+     <div v-if="loading" class="flex justify-center items-center py-20">
+       <div class="w-10 h-10 border-4 border-gray-300 border-t-gray-500 rounded-full animate-spin"></div>
      </div>
 
      <!-- Ошибка при загрузке -->
@@ -12,22 +13,55 @@
      </div>
 
      <!-- Успешно загруженный продукт -->
-     <div v-else-if="product" class="grid md:grid-cols-2 gap-6">
-       <img :src="product.thumbnail" alt="" class="w-full h-80 object-cover rounded" />
-       <div>
-         <h1 class="text-2xl font-bold">{{ product.title }}</h1>
-         <p class="text-gray-600 mt-2">{{ product.description }}</p>
-         <div class="mt-4">
-           <div class="text-xl font-semibold">{{ product.price }} $</div>
-           <div class="mt-2 flex gap-2">
-             <button @click="addToCart(product)" class="px-4 py-2 border rounded">В корзину</button>
-             <button @click="toggleFav(product)" class="px-4 py-2 border rounded">В избранное</button>
+     <div v-else-if="product" class="grid md:grid-cols-2 gap-6 items-start">
+       <!-- Изображение -->
+       <div class="flex justify-center">
+         <img
+           :src="product.thumbnail"
+           alt=""
+           class="w-full max-w-sm h-auto object-contain rounded-lg shadow-sm"
+         />
+       </div>
+
+       <!-- Информация -->
+       <div class="flex flex-col justify-center">
+         <h1 class="text-3xl font-bold text-gray-800">{{ product.title }}</h1>
+         <p class="text-gray-600 mt-3 leading-relaxed">{{ product.description }}</p>
+
+         <div class="mt-6">
+           <div class="text-2xl font-semibold text-gray-900">{{ product.price }} $</div>
+
+           <!-- Кнопки -->
+           <div class="mt-4 flex gap-3 items-center">
+             <!-- Добавить в корзину -->
+             <button
+               @click="addToCart(product)"
+               class="border-transparent px-3 py-2 hover:text-green-600 transition"
+               title="Добавить в корзину"
+             >
+               <ShoppingCartIcon class="w-7 h-7 inline-block" />
+             </button>
+
+             <!-- Избранное -->
+             <button
+               @click="toggleFav(product)"
+               class="border-transparent px-3 py-2 hover:text-red-500 transition"
+               title="Добавить в избранное"
+             >
+               <HeartIconSolid
+                 v-if="isFav(product)"
+                 class="w-7 h-7 inline-block text-red-500"
+               />
+               <HeartIconOutline
+                 v-else
+                 class="w-7 h-7 inline-block"
+               />
+             </button>
            </div>
          </div>
        </div>
      </div>
 
-     <!-- Если продукт не найден или не загружен -->
      <div v-else class="text-center text-gray-500 py-8">
        Продукт не найден.
      </div>
@@ -36,25 +70,30 @@
 </template>
 
 <script>
-
 import Header from './Header.vue'
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useStore } from 'vuex'
 import { fetchProductById } from '../api/products'
 
+import {
+ ShoppingCartIcon,
+ HeartIcon as HeartIconSolid,
+} from '@heroicons/vue/24/solid'
+import { HeartIcon as HeartIconOutline } from '@heroicons/vue/24/outline'
+
 export default {
- components: { Header },
+ components: { Header, ShoppingCartIcon, HeartIconSolid, HeartIconOutline },
  setup() {
    const route = useRoute()
    const store = useStore()
 
-   // Локальные рефы, чтобы избежать гонок с глобальным state
    const product = ref(null)
    const loading = ref(false)
    const error = ref('')
 
-   // Функция загрузки — отменяем старые данные и загружаем новые
+   const favorites = computed(() => store.state.favorites.items)
+
    const loadProduct = async (id) => {
      if (!id) {
        product.value = null
@@ -67,7 +106,6 @@ export default {
      loading.value = true
 
      try {
-       // fetchProductById должен возвращать объект продукта (api/products.js)
        const res = await fetchProductById(id)
        product.value = res
      } catch (err) {
@@ -79,12 +117,10 @@ export default {
      }
    }
 
-   // При первой загрузке страницы
    onMounted(() => {
      loadProduct(route.params.id)
    })
 
-   // При изменении id в адресной строке (когда пользователь кликает другой товар)
    watch(
      () => route.params.id,
      (newId, oldId) => {
@@ -93,21 +129,27 @@ export default {
      }
    )
 
-   // Методы для cart/favorites (через Vuex)
    const addToCart = (p) => store.commit('cart/add', p)
    const toggleFav = (p) => store.commit('favorites/toggle', p)
+   const isFav = (p) => favorites.value.some(item => item.id === p.id)
 
    return {
      product,
      loading,
      error,
      addToCart,
-     toggleFav
+     toggleFav,
+     isFav,
    }
- }
+ },
 }
 </script>
 
 <style scoped>
-
+img {
+ transition: transform 0.3s ease;
+}
+img:hover {
+ transform: scale(1.05);
+}
 </style>

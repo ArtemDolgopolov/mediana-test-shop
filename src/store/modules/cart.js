@@ -19,6 +19,14 @@ export default {
    setQty(state, { id, qty }) {
      const item = state.items.find(i => i.product.id === id)
      if (item) item.qty = qty
+   },
+   increaseQty(state, id) {
+     const item = state.items.find(i => i.product.id === id)
+     if (item) item.qty++
+   },
+   decreaseQty(state, id) {
+     const item = state.items.find(i => i.product.id === id)
+     if (item && item.qty > 1) item.qty--
    }
- }
+  }
 }
